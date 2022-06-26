@@ -75,7 +75,7 @@ void loop() {
 void handleInputs(){
   if(topSensor){
     if(!state.triggered){
-      state.from == From::top;
+      state.from = From::top;
       fadeIn();
     }else if(state.triggered && state.from == From::bottom){
       fadeOut();
@@ -83,7 +83,7 @@ void handleInputs(){
   }
   if(bottomSensor){
     if(!state.triggered){
-      state.from == From::bottom;
+      state.from = From::bottom;
       fadeIn();
     }else if(state.triggered && state.from == From::top){
       fadeOut();
