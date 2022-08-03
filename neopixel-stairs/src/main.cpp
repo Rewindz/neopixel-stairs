@@ -1,23 +1,27 @@
 #include <Adafruit_NeoPixel.h>
 #include <arduino-timer.h>
 
-//#define DEBUG
+//#define DEBUG //Sets debug mode
+//#define NOWAIT //Skips waiting for sensor signal to stablize
 
-#define STAIR_RISERS 8
-#define LED_PER_STAIR 5
+#include "main.hpp"
+
+
+#define STAIR_RISERS 10
+#define LED_PER_STAIR 2
 
 #define LED_PIN 8
 #define BOTTOM_SENSOR 4
 #define TOP_SENSOR 5
 
 #define STEP_DELAY 5 // in ms
-#define FADE_DELAY 250  // in us
+#define FADE_DELAY 250 // in us
 
 #define CYCLE_WAIT_TIME 250 // in ms
 
-#define TIMEOUT 10000  //in ms, used for timeout
+#define TIMEOUT 10000 //in ms, used for timeout
 
-#define BRIGHTNESS 100 //0-100
+#define BRIGHTNESS 255 //0-255
 
 Adafruit_NeoPixel strip((STAIR_RISERS * LED_PER_STAIR), LED_PIN, NEO_GRB + NEO_KHZ800);
 Timer<1> timer;
@@ -42,18 +46,32 @@ struct State{
 State state;
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  digitalWrite(LED_BUILTIN, LOW);
+
   strip.begin();
   strip.clear();
   strip.setBrightness(BRIGHTNESS);
   strip.show();
+
+  //strip.fill(strip.Color(255, 255, 255));
+  //strip.show();
 
 
   //Debug
   #ifdef DEBUG
   Serial.begin(19200);
   Serial.println("Startup!");
-  debugTimer.every(500, debug);
+  debugTimer.every(500, debug, nullptr);
+  Serial.println("Delaying 30sec for sensors to stabilize");
   #endif
+
+  #ifndef NOWAIT
+  delay(30000);
+  #endif
+
+  digitalWrite(LED_BUILTIN, HIGH);
 
   pinMode(BOTTOM_SENSOR, INPUT);
   pinMode(TOP_SENSOR, INPUT);
@@ -72,32 +90,14 @@ void loop() {
   timer.tick();
 }
 
-void handleInputs(){
-  if(topSensor){
-    if(!state.triggered){
-      state.from = From::top;
-      fadeIn();
-    }else if(state.triggered && state.from == From::bottom){
-      fadeOut();
-    }
-  }
-  if(bottomSensor){
-    if(!state.triggered){
-      state.from = From::bottom;
-      fadeIn();
-    }else if(state.triggered && state.from == From::top){
-      fadeOut();
-    }
-  }
-}
-
 bool fadeOut(){
   if (state.from != From::bottom) {
     state.currentRiser = 0;
     while (state.currentRiser <= STAIR_RISERS) {
-      for (int j = 255; j > 0; j--) {
+      for (int j = 255; j >= 0; j--) {
         for (int i = 0; i < LED_PER_STAIR; i++) {
-          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          //strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, strip.Color(j, j, j));
         }
         strip.show();
         delayMicroseconds(FADE_DELAY);
@@ -109,9 +109,10 @@ bool fadeOut(){
   } else {
     state.currentRiser = STAIR_RISERS;
     while (state.currentRiser >= 0) {
-      for (int j = 255; j > 0; j--) {
+      for (int j = 255; j >= 0; j--) {
         for (int i = 0; i < LED_PER_STAIR; i++) {
-          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          //strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, strip.Color(j, j, j));
         }
         strip.show();
         delayMicroseconds(FADE_DELAY);
@@ -133,7 +134,8 @@ bool fadeIn(){
     while (state.currentRiser <= STAIR_RISERS) {
       for (int j = 1; j < 255; j++) {
         for (int i = 0; i < LED_PER_STAIR; i++) {
-          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          //strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, strip.Color(j, j, j));
         }
         strip.show();
         delayMicroseconds(FADE_DELAY);
@@ -147,7 +149,8 @@ bool fadeIn(){
     while (state.currentRiser >= 0) {
       for (int j = 1; j < 255; j++) {
         for (int i = 0; i < LED_PER_STAIR; i++) {
-          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          //strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, j, j, j);
+          strip.setPixelColor((state.currentRiser * LED_PER_STAIR) + i, strip.Color(j, j, j));
         }
         strip.show();
         delayMicroseconds(FADE_DELAY);
@@ -160,14 +163,14 @@ bool fadeIn(){
   return true;
 }
 
-bool timeout(){
+bool timeout(void* arg){
   fadeOut();
   return true;
 }
 
 void handleTimer(){
   if(state.triggered && timer.empty()){
-    timer.in(TIMEOUT, timeout);
+    timer.in(TIMEOUT, timeout, nullptr);
   }else{
     if(!timer.empty() && !state.triggered){
       timer.cancel();
@@ -180,8 +183,29 @@ void getInputs() {
   bottomSensor = digitalRead(BOTTOM_SENSOR) == HIGH;
 }
 
+
+void handleInputs(){
+  if(topSensor){
+    if(!state.triggered){
+      state.from = From::top;
+      fadeIn();
+    }else if(state.triggered && state.from == From::bottom){
+      fadeOut();
+    }
+  }
+  if(bottomSensor){
+    if(!state.triggered){
+      state.from = From::bottom;
+      fadeIn();
+    }else if(state.triggered && state.from == From::top){
+      fadeOut();
+    }
+  }
+}
+
 #ifdef DEBUG
-void debug(){
+//Print debug info to serial
+bool debug(void* arg){
 
   Serial.println("Inputs:");
   Serial.print("topSensor: ");
@@ -219,5 +243,6 @@ void debug(){
     Serial.println("timer: !empty");
   }
   Serial.println();
+  return true;
 }
 #endif
