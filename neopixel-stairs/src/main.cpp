@@ -7,12 +7,12 @@
 #include "main.hpp"
 
 
-#define STAIR_RISERS 10
-#define LED_PER_STAIR 2
+#define STAIR_RISERS 16
+#define LED_PER_STAIR 18
 
 #define LED_PIN 8
-#define BOTTOM_SENSOR 4
-#define TOP_SENSOR 5
+#define BOTTOM_SENSOR 5
+#define TOP_SENSOR 7
 
 #define STEP_DELAY 5 // in ms
 #define FADE_DELAY 250 // in us
